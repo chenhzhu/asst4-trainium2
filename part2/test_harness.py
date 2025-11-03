@@ -112,8 +112,8 @@ def test_performance_conv2d_kernel(
     performance_requirements_by_dtype_size = {
         (np.float32, 224): [4964, 4596],
         (np.float16, 224): [1365, 1002],
-        (np.float32, 32): [112, 112],
-        (np.float16, 32): [86, 86],
+        (np.float32, 32): [110, 110],
+        (np.float16, 32): [84, 84],
     }
 
     X = np.random.rand(batch_size, in_channels, image_height, image_width).astype(dtype)
