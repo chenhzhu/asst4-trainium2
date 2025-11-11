@@ -1,0 +1,96 @@
+(aws_neuronx_venv_pytorch_2_8) ubuntu@ip-172-31-37-44:~/cs149_asst4/part1$ neuron-profile view --output-format summary-text -n transpose_1024.neff 
+-s transpose_1024.ntff
+WARN[0000] NeuronCore buffer usage simulation is disabled for output format summary-text. The output will not include SB and PSUM usage over time values. 
+n_8626d546eca84cd4e976c1062dacf487d24bc675
+    instance_type                                     trn2.3xlarge
+    total_active_time_percent                         0.716559644891548
+    cc_cores_instruction_active_time_percent          0
+    mm_arithmetic_intensity                           0
+    scalar_engine_active_time_percent                 0.3502734762617724
+    gpsimd_engine_active_time_percent                 0.12466608842493454
+    dma_transfer_time                                 0.000122770401
+    dynamic_dma_packet_percent                        0
+    gpsimd_engine_instruction_count                   191
+    nd_idx                                            0
+    throttle_active_nc0_time_ns                       12645
+    throttle_activity_1_avg_util_limit_nc0_percent    0.5
+    hbm_read_bytes                                    4210688
+    tensor_engine_active_time                         1.613914e-05
+    nc_idx                                            9
+    spill_reload_bytes                                0
+    hardware_flops                                    268435456
+    psum_read_sbuf_write_bytes                        32768
+    hardware_dynamic_dma_packet_count                 0
+    trace_count                                       5976
+    sbuf_write_bytes                                  4292608
+    dma_queue_count                                   51
+    driver_version                                    2.23.0 ()
+    cc_cores_instruction_time                         0
+    transpose_flops                                   268435456
+    psum_read_bytes                                   32768
+    vector_engine_instruction_count                   64
+    cc_op_time                                        0
+    cc_op_active_time                                 0
+    model_flops                                       0
+    output_queue_bytes                                0
+    spill_save_bytes                                  0
+    dma_active_time_percent                           0.6014398171788062
+    profiler_version                                  2.25.145.0%kaena-tools/2.25@866f606
+    total_active_time                                 3.3299072e-05
+    sync_engine_instruction_time                      6.290823e-06
+    sync_engine_active_time_percent                   0.12515019928337304
+    activate_instruction_time                         0
+    static_dma_size                                   8462664
+    dynamic_dma_size_percent                          0
+    tensor_engine_instruction_time                    3.4642436e-05
+    weight_queue_bytes                                65536
+    vector_engine_instruction_time                    1.357292e-06
+    gpsimd_engine_active_time                         5.793328e-06
+    neuroncore_cycle_count                            55764
+    cc_op_active_time_percent                         0
+    mfu_estimated_percent                             0
+    psum_write_bytes                                  32768
+    dma_active_cycles                                 33539
+    mbu_estimated_percent                             0.2526064853743444
+    cc_cores_instruction_active_time                  0
+    hbm_write_bytes                                   4194304
+    tensor_engine_instruction_count                   253
+    scalar_engine_instruction_count                   128
+    vector_engine_active_time                         1.357292e-06
+    software_dynamic_dma_size                         0
+    hardware_dynamic_dma_size                         0
+    sync_engine_instruction_count                     117
+    cc_cores_instruction_count                        0
+    matmul_instruction_count                          64
+    sync_engine_active_time                           5.815825e-06
+    dma_active_time                                   2.7949366e-05
+    software_dynamic_dma_packet_count                 0
+    input_queue_bytes                                 8388608
+    throttle_activity_1_active_time_nc0_percent       0.2705738862498395
+    dma_transfer_total_bytes                          8454144
+    inputs_and_weights_size_bytes                     8486912
+    throttle_activity_0_avg_util_limit_nc0_percent    1
+    tensor_engine_active_time_percent                 0.34729665821482886
+    scalar_engine_active_time                         1.6277475e-05
+    hfu_estimated_percent                             0.036725600964442995
+    collectives_version                               2.27.34 ()
+    mfu_max_achievable_estimated_percent              0
+    gpsimd_engine_instruction_time                    5.793328e-06
+    sbuf_read_bytes                                   4259840
+    dma_transfer_count                                129
+    vector_engine_active_time_percent                 0.029207440781957493
+    total_time                                        4.6470761e-05
+    peak_flops_bandwidth_ratio                        109.83687119420962
+    runtime_version                                   2.27.23 (8deec)
+    event_count                                       2836
+    dma_packet_time                                   0.00039935469
+    static_dma_packet_count                           2258
+    psum_read_sbuf_write_count                        64
+    throttle_avg_util_limit_nc0_percent               0.4274297085633586
+    weight_size_bytes                                 98304
+    dma_transfer_average_bytes                        65536
+    compiler_version                                  2.21.18209.0+043b1bf7
+    cc_op_count                                       0
+    scalar_engine_instruction_time                    2.0564963e-05
+    throttle_activity_0_active_time_nc0_percent       0.2921427654384388
+(aws_neuronx_venv_pytorch_2_8) ubuntu@ip-172-31-37-44:~/cs149_asst4/part1$ 

@@ -66,7 +66,7 @@ def vector_add_tiled(a_vec, b_vec):
     M = a_vec.shape[0]
     
     # TODO: You should modify this variable for Step 1
-    ROW_CHUNK = 128
+    ROW_CHUNK = 256 # 128
 
     # Loop over the total number of chunks, we can use affine_range
     # because there are no loop-carried dependencies
@@ -102,7 +102,7 @@ def vector_add_stream(a_vec, b_vec):
     M = a_vec.shape[0]
 
     # TODO: You should modify this variable for Step 2a
-    FREE_DIM = 2000
+    FREE_DIM = 1000 #2000
 
     # The maximum size of our Partition Dimension
     PARTITION_DIM = 128
@@ -148,5 +148,74 @@ def matrix_transpose(a_tensor):
     assert M % tile_dim == N % tile_dim == 0, "Matrix dimensions not divisible by tile dimension!"
 
     # TODO: Your implementation here. The only compute instruction you should use is `nisa.nc_transpose`.
+    
+    # Loop over all tiles in the input matrix
+    num_tiles_m = M // tile_dim
+    num_tiles_n = N // tile_dim
+    
+    for i in nl.affine_range(num_tiles_m):
+        for j in nl.affine_range(num_tiles_n):
+            # Allocate space for input tile in SBUF
+            input_tile = nl.ndarray((tile_dim, tile_dim), dtype=a_tensor.dtype, buffer=nl.sbuf)
+            
+            # Load input tile from HBM to SBUF
+            nisa.dma_copy(src=a_tensor[i * tile_dim : (i + 1) * tile_dim, j * tile_dim : (j + 1) * tile_dim], 
+                         dst=input_tile)
+            
+            # Transpose the tile (result stored in PSUM)
+            res_psum = nisa.nc_transpose(input_tile)
+            
+            # Copy from PSUM to SBUF
+            res_sbuf = nl.copy(res_psum, dtype=a_tensor.dtype)
+            
+            # Store transposed tile to output at position (j, i) in HBM
+            nisa.dma_copy(src=res_sbuf, 
+                         dst=out[j * tile_dim : (j + 1) * tile_dim, i * tile_dim : (i + 1) * tile_dim])
 
     return out
+
+"""
+Optimized version of matrix transpose for extra credit.
+Key optimizations for memory-bound operations:
+1. Optimize loop order to improve memory access patterns (better write locality)
+2. Use tensor_copy for faster PSUM to SBUF transfer (ISA-level operation)
+3. Minimize operations by directly using tensor_copy result
+"""
+@nki.compiler.skip_middle_end_transformations
+@nki.jit
+def matrix_transpose_optimized(a_tensor):
+    M, N = a_tensor.shape
+    out = nl.ndarray((N, M), dtype=a_tensor.dtype, buffer=nl.hbm)
+    tile_dim = nl.tile_size.pmax  # this should be 128
+
+    assert M % tile_dim == N % tile_dim == 0, "Matrix dimensions not divisible by tile dimension!"
+    
+    num_tiles_m = M // tile_dim
+    num_tiles_n = N // tile_dim
+    
+    # Optimize loop order: process by output tile position (j, i)
+    # This improves write locality - for fixed j, we write to consecutive columns
+    # which is more cache-friendly than the original i-outer, j-inner pattern
+    for j in nl.affine_range(num_tiles_n):
+        for i in nl.affine_range(num_tiles_m):
+            # Allocate space for input tile in SBUF
+            input_tile = nl.ndarray((tile_dim, tile_dim), dtype=a_tensor.dtype, buffer=nl.sbuf)
+            
+            # Load input tile from HBM to SBUF
+            nisa.dma_copy(src=a_tensor[i * tile_dim : (i + 1) * tile_dim, j * tile_dim : (j + 1) * tile_dim], 
+                         dst=input_tile)
+            
+            # Transpose the tile (result stored in PSUM)
+            res_psum = nisa.nc_transpose(input_tile)
+            
+            # Copy from PSUM to SBUF using tensor_copy (ISA-level, faster than nl.copy)
+            # tensor_copy returns a new tensor in SBUF, avoiding dtype conversion overhead
+            output_tile = nisa.tensor_copy(res_psum)
+            
+            # Store transposed tile to output at position (j, i) in HBM
+            # With j as outer loop, this creates a more sequential write pattern
+            nisa.dma_copy(src=output_tile, 
+                         dst=out[j * tile_dim : (j + 1) * tile_dim, i * tile_dim : (i + 1) * tile_dim])
+
+    return out
+
