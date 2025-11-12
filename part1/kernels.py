@@ -197,23 +197,29 @@ def matrix_transpose_optimized(a_tensor):
     # This improves write locality - for fixed j, we write to consecutive columns
     # which is more cache-friendly than the original i-outer, j-inner pattern
     for j in nl.affine_range(num_tiles_n):
+        # Key optimization: Load entire column of tiles in one DMA operation
+        # This reduces DMA copy overhead significantly - from num_tiles_m copies to just 1 copy per j
+        # Load the entire column (M, tile_dim) directly - no transpose, preserve original layout
+        # Note: If M is large, we may need to handle SBUF size limits, but let's try direct load first
+        input_column = nl.ndarray((M, tile_dim), dtype=a_tensor.dtype, buffer=nl.sbuf)
+        # Load the entire column from HBM - shape (M, tile_dim)
+        nisa.dma_copy(src=a_tensor[:, j * tile_dim : (j + 1) * tile_dim], 
+                     dst=input_column)
+        
         for i in nl.affine_range(num_tiles_m):
-            # Allocate space for input tile in SBUF
-            input_tile = nl.ndarray((tile_dim, tile_dim), dtype=a_tensor.dtype, buffer=nl.sbuf)
-            
-            # Load input tile from HBM to SBUF
-            nisa.dma_copy(src=a_tensor[i * tile_dim : (i + 1) * tile_dim, j * tile_dim : (j + 1) * tile_dim], 
-                         dst=input_tile)
+            # Extract 128x128 tile from the pre-loaded column
+            # Slice: input_column[i*tile_dim:(i+1)*tile_dim, :] gives (tile_dim, tile_dim)
+            # This preserves the correct data layout for nc_transpose
+            input_tile = input_column[i * tile_dim : (i + 1) * tile_dim, :]
             
             # Transpose the tile (result stored in PSUM)
             res_psum = nisa.nc_transpose(input_tile)
             
             # Copy from PSUM to SBUF using tensor_copy (ISA-level, faster than nl.copy)
-            # tensor_copy returns a new tensor in SBUF, avoiding dtype conversion overhead
             output_tile = nisa.tensor_copy(res_psum)
             
             # Store transposed tile to output at position (j, i) in HBM
-            # With j as outer loop, this creates a more sequential write pattern
+            # Issue DMA write immediately after computation for better pipelining
             nisa.dma_copy(src=output_tile, 
                          dst=out[j * tile_dim : (j + 1) * tile_dim, i * tile_dim : (i + 1) * tile_dim])
 
