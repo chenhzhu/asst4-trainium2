@@ -163,7 +163,7 @@ def matrix_transpose(a_tensor):
                          dst=input_tile)
             
             # Transpose the tile (result stored in PSUM)
-            res_psum = nisa.nc_transpose(input_tile)
+            res_psum = nisa.nc_transpose(input_tile, engine=nki.isa.constants.engine.vector)
             
             # Copy from PSUM to SBUF
             res_sbuf = nl.copy(res_psum, dtype=a_tensor.dtype)
@@ -225,3 +225,50 @@ def matrix_transpose_optimized(a_tensor):
 
     return out
 
+
+
+
+
+
+@nki.compiler.skip_middle_end_transformations
+@nki.jit
+def matrix_transpose_optimized(a_tensor):
+    M, N = a_tensor.shape
+    out = nl.ndarray((N, M), dtype=a_tensor.dtype, buffer=nl.hbm)
+    tile_dim = nl.tile_size.pmax  # typically 128
+
+    assert M % tile_dim == 0 and N % tile_dim == 0, "Matrix dimensions not divisible by tile dimension!"
+    num_tiles_m = M // tile_dim
+    num_tiles_n = N // tile_dim
+
+    # Partition dimension: each row‑tile block is a partition
+    assert num_tiles_m <= nl.tile_size.pmax, "num_tiles_m exceeds partition limit!"
+    # Define input_column with first dim = num_tiles_m (partition)
+    input_column = nl.ndarray((num_tiles_m, tile_dim, tile_dim),
+                              dtype=a_tensor.dtype, buffer=nl.sbuf)
+
+    for j in nl.affine_range(num_tiles_n):
+        # Load j‑th tile‑column blocks from HBM → SBUF
+        for i in nl.affine_range(num_tiles_m):
+            # Source block shape (tile_dim × tile_dim)
+            src_block = a_tensor[i*tile_dim:(i+1)*tile_dim,
+                                 j*tile_dim:(j+1)*tile_dim]
+            # Reshape to include partition dim = 1
+            src = src_block.reshape((1, tile_dim, tile_dim))
+            dst = input_column[i:i+1, :, :]   # Keep first dim as partition = 1
+            nisa.dma_copy(src=src, dst=dst)
+
+        for i in nl.affine_range(num_tiles_m):
+            # Retrieve tile from SBUF
+            tile = input_column[i:i+1, :, :].reshape((tile_dim, tile_dim))
+            # Perform transpose
+            res_psum = nisa.nc_transpose(tile)
+            output_tile = nisa.tensor_copy(res_psum)
+            # Destination in output matrix
+            dst_block = out[j*tile_dim:(j+1)*tile_dim,
+                            i*tile_dim:(i+1)*tile_dim]
+            dst_out_tile = dst_block.reshape((1, tile_dim, tile_dim))
+            nisa.dma_copy(src=output_tile.reshape((1, tile_dim, tile_dim)),
+                          dst=dst_out_tile)
+
+    return out
