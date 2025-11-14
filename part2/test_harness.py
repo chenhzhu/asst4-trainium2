@@ -153,7 +153,7 @@ def get_performance_score(test_result, total_score):
     elif relaxed_result:
         print("Can you make it faster? 🧐")
         # students get most of the score with meeting the relaxed time constraint
-        return total_score * 0.9
+        return total_score * 0.95
     else:
         print("Performance test failed 😢")
         return 0
